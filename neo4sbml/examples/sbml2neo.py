@@ -126,7 +126,7 @@ def create_rdf_nodes(rdf, object_id, graph):
                 MATCH (m) WHERE m.object_id="{}"
                 CREATE (r)-[:{}]->(m)
             '''.format(uri, object_id, d["Qualifier"])
-            print(cypher_str)
+            # print(cypher_str)
             graph.cypher.execute(cypher_str)
 
 
@@ -137,7 +137,6 @@ def split_uri(uri):
 
 def sbml_2_neo(sbml_filepath):
     """ Creates the neo4j graph from SBML. """
-    print('Create neo graph')
     graph = neo.Graph()
 
     # model
@@ -146,13 +145,8 @@ def sbml_2_neo(sbml_filepath):
     model_id = model.getId()
 
 
-    # graph.schema.create_uniqueness_constraint("Model", "id")
-    # neo_model = neo.Node("Model", id=model.getId())
-    # neo_model = graph.merge("Model", "id", model.getId())
-
-
-
     def rdf_graph(obj, label):
+        """ Creates the RDF graph for the given model object. """
         object_id = '__'.join([obj.getId(), model_id])
         # Create the object node
         cypher_str = '''
@@ -202,6 +196,25 @@ def sbml_2_neo(sbml_filepath):
     # ----------------------------------------------------
 
 
+def get_model_paths():
+    from neo4sbml.data.data import data_dir
+    import os
+    dir = os.path.join(data_dir, 'BioModels-r29_sbml_curated')
+
+    # get all SBML files in folder
+    files = [os.path.join(dir, f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f))]
+    return sorted(files)
+
 if __name__ == "__main__":
     from neo4sbml.data.data import example_filepath
+    # parse one test file
     sbml_2_neo(example_filepath)
+
+    # ----------------------------------------------------
+
+    # parse all the models
+    files = get_model_paths()
+    print("Number of models:", len(files))
+    for k, filepath in enumerate(files):
+        print('[{}/{}] {}'.format(k+1, len(files), filepath))
+        sbml_2_neo(filepath)
