@@ -107,16 +107,28 @@ def read_rdf(sobj):
             })
     return rdf
 
-def create_rdf_nodes(rdf, neo_node, graph):
+def create_rdf_nodes(rdf, object_id, graph):
     """ Creates the additional RDF nodes for the given neo_node. """
     for d in rdf:
         for uri in d['URIS']:
             # create rdf node
-            neo_rdf = neo.Node("RDF", uri=uri)
-            
+            # neo_rdf = neo.Node("RDF", uri=uri)
+            neo_rdf = graph.cypher.execute('MERGE (r:RDF {{uri: "{}" }}) RETURN r'.format(uri))
+            # print('neo_rdf', neo_rdf)
+
             # create the qualifier
-            bqt_model = neo.Relationship(neo_rdf, d["Qualifier"], neo_node)
-            graph.create(bqt_model)
+            # TODO:
+            # bqt_model = neo.Relationship(neo_rdf, d["Qualifier"], neo_node)
+            # graph.create(bqt_model)
+
+            cypher_str = '''
+                MATCH (r:RDF) WHERE r.uri="{}"
+                MATCH (m) WHERE m.object_id="{}"
+                CREATE (r)-[:{}]->(m)
+            '''.format(uri, object_id, d["Qualifier"])
+            print(cypher_str)
+
+            graph.cypher.execute(cypher_str)
 
 
 def split_uri(uri):
@@ -132,16 +144,29 @@ def sbml_2_neo(sbml_filepath):
     # model
     doc = libsbml.readSBMLFromFile(sbml_filepath)
     model = doc.getModel()
-    neo_model = neo.Node("Model", id=model.getId())
+    model_id = model.getId()
+
+
+    # graph.schema.create_uniqueness_constraint("Model", "id")
+    # neo_model = neo.Node("Model", id=model.getId())
+    # neo_model = graph.merge("Model", "id", model.getId())
+
+    # create model node
+    object_id = '__'.join([model_id, model_id])
+    neo_model = graph.cypher.execute('''
+        MERGE (m:Model {{ object_id: "{}", id: "{}", model: "{}" }})
+        RETURN m
+        '''.format(object_id, model_id, model_id))
 
     # read the rdf information    
     rdf = read_rdf(model)
     # create rdf nodes and relationships
-    create_rdf_nodes(rdf, neo_model, graph)
+    create_rdf_nodes(rdf, object_id=object_id, graph=graph)
 
+    '''
     # compartments
     for c in model.getListOfCompartments():
-        neo_c = neo.Node("Compartment", id=c.getId())
+        neo_c = neo.Node("Compartment", id=c.getId(), name=c.getName())
 
         c_in_model = neo.Relationship(neo_c, "COMPARTMENT_IN_MODEL", neo_model)
         graph.create(c_in_model)
@@ -153,11 +178,11 @@ def sbml_2_neo(sbml_filepath):
 
     # species
     for s in model.getListOfSpecies():
-        neo_s = neo.Node("Species", id=s.getId())
+        neo_s = neo.Node("Species", id=s.getId(), name=s.getName())
 
         s_in_model = neo.Relationship(neo_s, "SPECIES_IN_MODEL", neo_model)
         graph.create(s_in_model)
-        
+
         # read the rdf information    
         rdf = read_rdf(s)
         # create rdf nodes and relationships
@@ -173,8 +198,7 @@ def sbml_2_neo(sbml_filepath):
         rdf = read_rdf(r)
         # create rdf nodes and relationships
         create_rdf_nodes(rdf, neo_r, graph)
-
-    return model
+    '''
 
 
 if __name__ == "__main__":
