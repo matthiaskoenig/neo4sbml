@@ -258,12 +258,13 @@ if __name__ == "__main__":
     # ----------------------------------------------------
 
     import time
-
     # parse all the models
     files = get_model_paths()
 
     # first 50 models
     files = files[0:50]
+
+    # TODO: better transaction managment (everything in one transaction)
 
     print("Number of models:", len(files))
     for k, filepath in enumerate(files):
