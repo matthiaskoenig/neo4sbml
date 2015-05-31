@@ -127,7 +127,6 @@ def create_rdf_nodes(rdf, object_id, graph):
                 CREATE (r)-[:{}]->(m)
             '''.format(uri, object_id, d["Qualifier"])
             print(cypher_str)
-
             graph.cypher.execute(cypher_str)
 
 
@@ -151,56 +150,58 @@ def sbml_2_neo(sbml_filepath):
     # neo_model = neo.Node("Model", id=model.getId())
     # neo_model = graph.merge("Model", "id", model.getId())
 
-    # create model node
-    object_id = '__'.join([model_id, model_id])
-    neo_model = graph.cypher.execute('''
-        MERGE (m:Model {{ object_id: "{}", id: "{}", model: "{}" }})
-        RETURN m
-        '''.format(object_id, model_id, model_id))
 
-    # read the rdf information    
-    rdf = read_rdf(model)
-    # create rdf nodes and relationships
-    create_rdf_nodes(rdf, object_id=object_id, graph=graph)
 
-    '''
-    # compartments
-    for c in model.getListOfCompartments():
-        neo_c = neo.Node("Compartment", id=c.getId(), name=c.getName())
-
-        c_in_model = neo.Relationship(neo_c, "COMPARTMENT_IN_MODEL", neo_model)
-        graph.create(c_in_model)
-        
-        # read the rdf information    
-        rdf = read_rdf(c)
+    def rdf_graph(obj, label):
+        object_id = '__'.join([obj.getId(), model_id])
+        # Create the object node
+        cypher_str = '''
+            MERGE (m:{} {{ object_id: "{}", id: "{}", model: "{}" }})
+            RETURN m
+            '''.format(label, object_id, obj.getId(), model_id)
+        graph.cypher.execute(cypher_str)
+        # read the rdf information
+        rdf = read_rdf(obj)
         # create rdf nodes and relationships
-        create_rdf_nodes(rdf, neo_c, graph)
+        create_rdf_nodes(rdf, object_id=object_id, graph=graph)
+
+
+    def link_to_model(obj, label):
+        """ Link between model objects and model."""
+        relation_str = "_".join([label.upper(), 'IN', 'MODEL'])
+        object_id = '__'.join([obj.getId(), model_id])
+        cypher_str = '''
+                MATCH (c:{}) WHERE c.object_id="{}"
+                MATCH (m:Model) WHERE m.object_id="{}"
+                CREATE (c)-[:{}]->(m)
+        '''.format(label, object_id, "__".join([model_id, model_id]), relation_str)
+        # print(cypher_str)
+        graph.cypher.execute(cypher_str)
+
+    # ----------------------------------------------------
+    # model
+    rdf_graph(model, 'Model')
+
+    # compartments
+    for obj in model.getListOfCompartments():
+        label = 'Compartment'
+        rdf_graph(obj=obj, label=label)
+        link_to_model(obj=obj, label=label)
 
     # species
-    for s in model.getListOfSpecies():
-        neo_s = neo.Node("Species", id=s.getId(), name=s.getName())
-
-        s_in_model = neo.Relationship(neo_s, "SPECIES_IN_MODEL", neo_model)
-        graph.create(s_in_model)
-
-        # read the rdf information    
-        rdf = read_rdf(s)
-        # create rdf nodes and relationships
-        create_rdf_nodes(rdf, neo_s, graph)
+    for obj in model.getListOfSpecies():
+        label = 'Species'
+        rdf_graph(obj=obj, label=label)
+        link_to_model(obj=obj, label=label)
 
     # reactions
-    for r in model.getListOfReactions():
-        neo_r = neo.Node("Reaction", id=r.getId())
-        r_in_model = neo.Relationship(neo_r, "REACTION_IN_MODEL", neo_model)
-        graph.create(r_in_model)
-        
-        # read the rdf information    
-        rdf = read_rdf(r)
-        # create rdf nodes and relationships
-        create_rdf_nodes(rdf, neo_r, graph)
-    '''
+    for obj in model.getListOfReactions():
+        label = 'Reaction'
+        rdf_graph(obj=obj, label=label)
+        link_to_model(obj=obj, label=label)
+    # ----------------------------------------------------
 
 
 if __name__ == "__main__":
     from neo4sbml.data.data import example_filepath
-    model = sbml_2_neo(example_filepath)
+    sbml_2_neo(example_filepath)
