@@ -3,21 +3,6 @@ Read a given computational model in SBML format into the Neo4j graph model.
 
 The nodes are SBML objects from the xml graph
 
-"""
-from __future__ import print_function
-# read the SBML example annotations
-
-import libsbml
-import py2neo as neo
-from enum import Enum
-
-# TODO: put in model
-class Relationship(Enum):
-    pass
-
-
-def read_rdf(sobj):
-    """
     <bqmodel:is>
 	<rdf:Bag>
 	<rdf:li rdf:resource="http://identifiers.org/biomodels.db/MODEL6613849442"/>
@@ -47,20 +32,59 @@ def read_rdf(sobj):
 	</bqbiol:hasTaxon>
 	</rdf:Description>
 	</rdf:RDF>
-    """
-    
+
+"""
+from __future__ import print_function
+# read the SBML example annotations
+
+import libsbml
+import py2neo as neo
+from enum import Enum
+
+# TODO: put in model
+class Relationship(Enum):
+    pass
+
+
+def read_rdf(sobj):
+    """ Read RDF from the given SBML object. """
     cvterms = sobj.getCVTerms()
-    for cv in cvterms:        
+    
+    rdf = []    
+    for cv in cvterms:  
+        print('#')
         print('BQT', cv.getBiologicalQualifierType())
         print('MQT', cv.getModelQualifierType())
-        resources = cv.getResources()
-        print('resources', resources)
-        for k in range(resources.getLength()):
-            res = resources.
-        # for res in resources:
-        #     print('res', res)
+        uris = []
+        for k in range(cv.getNumResources()):
+            print('URI:', cv.getResourceURI(k))
+            uri = cv.getResourceURI(k)
+            uris.append(uri)
+        rdf.append({'BQT': cv.getBiologicalQualifierType(),
+                    'MQT': cv.getModelQualifierType(),
+                    'URIS': uris
+                   })
+    return rdf
 
-    return resources
+def create_rdf_nodes(rdf, neo_node, graph):
+    """ Creates the additional RDF nodes for the given neo_node. """
+    for d in rdf:
+        for uri in d['URIS']:
+            # create rdf node
+            neo_rdf = neo.Node("RDF", uri=uri)
+            # create the BQT relationship
+            bqt_model = neo.Relationship(neo_rdf, "BQT:{}".format(d["BQT"]), neo_node)
+            graph.create(bqt_model)
+        
+            # create the MQT relationship
+            mqt_model = neo.Relationship(neo_rdf, "MQT:{}".format(d["MQT"]), neo_node)
+            graph.create(mqt_model)
+    
+
+def split_uri(uri):
+    # TODO: get the splitted information
+    pass
+
 
 def sbml_2_neo(sbml_filepath):
     """ Creates the neo4j graph from SBML. """
@@ -71,9 +95,11 @@ def sbml_2_neo(sbml_filepath):
     doc = libsbml.readSBMLFromFile(sbml_filepath)
     model = doc.getModel()
     neo_model = neo.Node("Model", id=model.getId())
-    # TODO: set additional attributes/properties
+
+    # read the rdf information    
+    rdf = read_rdf(model)
+    # create the relationships
     
-        
 
     # compartments
     for c in model.getListOfCompartments():
