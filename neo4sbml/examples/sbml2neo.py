@@ -41,7 +41,6 @@ import libsbml
 import py2neo as neo
 from enum import Enum
 
-
 # ------------------------------------------------------------------
 # RDF relationships
 # ------------------------------------------------------------------
@@ -97,13 +96,13 @@ def read_rdf(sobj):
         # model qualifier
         if qualifier_type == 0: 
             rdf.append({'QualifierType': QUALIFIER[qualifier_type],
-                        'ModelQualifier': BGM[cv.getModelQualifierType()],
+                        'Qualifier': BQM[cv.getModelQualifierType()],
                         'URIS': uris
             })
         # biological qualifier
         if qualifier_type == 1: 
             rdf.append({'QualifierType': QUALIFIER[qualifier_type],
-                        'BiologicalQualifier': BGB[cv.getModelQualifierType()],
+                        'Qualifier': BQB[cv.getModelQualifierType()],
                         'URIS': uris
             })
     return rdf
@@ -114,15 +113,11 @@ def create_rdf_nodes(rdf, neo_node, graph):
         for uri in d['URIS']:
             # create rdf node
             neo_rdf = neo.Node("RDF", uri=uri)
-            # create the BQT relationship
-            bqt_model = neo.Relationship(neo_rdf, "BQT:{}".format(d["BQT"]), neo_node)
+            
+            # create the qualifier
+            bqt_model = neo.Relationship(neo_rdf, d["Qualifier"], neo_node)
             graph.create(bqt_model)
-        
-            # create the MQT relationship
-            mqt_model = neo.Relationship(neo_rdf, "MQT:{}".format(d["MQT"]), neo_node)
-            graph.create(mqt_model)
 
-    
 
 def split_uri(uri):
     # TODO: get the splitted information
@@ -180,18 +175,7 @@ def sbml_2_neo(sbml_filepath):
         create_rdf_nodes(rdf, neo_r, graph)
 
     return model
-    
 
-
-
-'''
-from py2neo import Node, Relationship
-
-alice = Node("Person", name="Alice")
-bob = Node("Person", name="Bob")
-alice_knows_bob = Relationship(alice, "KNOWS", bob)
-graph.create(alice_knows_bob)
-'''
 
 if __name__ == "__main__":
     from neo4sbml.data.data import example_filepath
