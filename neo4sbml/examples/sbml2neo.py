@@ -148,7 +148,11 @@ def setup_graph():
 
 
 def sbml_2_neo(sbml_filepath):
-    """ Creates the neo4j graph from SBML. """
+    """ Creates the neo4j graph from SBML.
+
+        Perform all the requests in a transaction
+        http://py2neo.org/2.0/cypher.html#transactions
+    """
     graph = setup_graph()
 
     #  sbml model
@@ -184,8 +188,6 @@ def sbml_2_neo(sbml_filepath):
                 MATCH (m:Model) WHERE m.object_id="{}"
                 MERGE (c)-[:{}]->(m)
         '''.format(label, object_id, "__".join([model_id, md5]), relation_str)
-
-        # TODO: check with PROFILE
         # print(cypher_str)
         graph.cypher.execute(cypher_str, )
 
@@ -265,6 +267,8 @@ if __name__ == "__main__":
 
     print("Number of models:", len(files))
     for k, filepath in enumerate(files):
+
+        # TODO: concurrent
         print('[{}/{}] {}'.format(k+1, len(files), filepath))
         start = time.time()
         sbml_2_neo(filepath)
