@@ -132,12 +132,17 @@ def split_uri(uri):
 def setup_graph():
     graph = neo.Graph()
     # set the indices
-
     cypher_str = '''
-        CREATE CONSTRAINT ON (m:SBase) ASSERT m.object_id IS UNIQUE
+        CREATE CONSTRAINT ON (r:RDF) ASSERT r.uri IS UNIQUE
     '''
     graph.cypher.execute(cypher_str)
 
+    labels = ['Model', 'Compartment', 'Reaction', 'Species']
+    for label in labels:
+        cypher_str = '''
+            CREATE CONSTRAINT ON (m:{}) ASSERT m.object_id IS UNIQUE
+        '''.format(label)
+        graph.cypher.execute(cypher_str)
 
     return graph
 
@@ -146,21 +151,23 @@ def sbml_2_neo(sbml_filepath):
     """ Creates the neo4j graph from SBML. """
     graph = setup_graph()
 
-
     #  sbml model
     doc = libsbml.readSBMLFromFile(sbml_filepath)
     model = doc.getModel()
+
+    md5 = hash_for_file(sbml_filepath)
     model_id = model.getId()
 
     def rdf_graph(obj, label):
         """ Creates the RDF graph for the given model object. """
-        object_id = '__'.join([obj.getId(), model_id])
+        object_id = '__'.join([obj.getId(), md5])
         # Create the object node
         cypher_str = '''
-            MERGE (m:{} {{ object_id: "{}", id: "{}", model: "{}" }})
-            RETURN m
-            '''.format(label, object_id, obj.getId(), model_id)
-        # TODO: on create set .. m.id=
+            MERGE (m:SBase:{} {{ object_id: "{}" }})
+            ON CREATE SET m.id="{}"
+            ON CREATE SET m.name="{}"
+            ON CREATE SET m.model="{}"
+            '''.format(label, object_id, obj.getId(), obj.getName(), model_id)
 
         graph.cypher.execute(cypher_str)
         # read the rdf information
@@ -171,12 +178,12 @@ def sbml_2_neo(sbml_filepath):
     def link_to_model(obj, label):
         """ Link between model objects and model."""
         relation_str = "_".join([label.upper(), 'IN', 'MODEL'])
-        object_id = '__'.join([obj.getId(), model_id])
+        object_id = '__'.join([obj.getId(), md5])
         cypher_str = '''
                 MATCH (c:{}) WHERE c.object_id="{}"
                 MATCH (m:Model) WHERE m.object_id="{}"
                 MERGE (c)-[:{}]->(m)
-        '''.format(label, object_id, "__".join([model_id, model_id]), relation_str)
+        '''.format(label, object_id, "__".join([model_id, md5]), relation_str)
 
         # TODO: check with PROFILE
         # print(cypher_str)
@@ -205,7 +212,6 @@ def sbml_2_neo(sbml_filepath):
         link_to_model(obj=obj, label=label)
     # ----------------------------------------------------
 
-
 def get_model_paths():
     from neo4sbml.data.data import data_dir
     import os
@@ -215,16 +221,52 @@ def get_model_paths():
     files = [os.path.join(dir, f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f))]
     return sorted(files)
 
+
+def hash_for_file(filepath, hash_type='MD5', blocksize=65536):
+    """ Calculate the md5_hash for a file.
+
+        Calculating a hash for a file is always useful when you need to check if two files
+        are identical, or to make sure that the contents of a file were not changed, and to
+        check the integrity of a file when it is transmitted over a network.
+        he most used algorithms to hash a file are MD5 and SHA-1. They are used because they
+        are fast and they provide a good way to identify different files.
+        [http://www.pythoncentral.io/hashing-files-with-python/]
+    """
+    import hashlib
+
+    hasher = None
+    if hash_type == 'MD5':
+        hasher = hashlib.md5()
+    elif hash_type == 'SHA1':
+        hasher == hashlib.sha1()
+    with open(filepath, 'rb') as f:
+        buf = f.read(blocksize)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = f.read(blocksize)
+    return hasher.hexdigest()
+
+
 if __name__ == "__main__":
-    from neo4sbml.data.data import example_filepath
+
     # parse one test file
-    sbml_2_neo(example_filepath)
+    # from neo4sbml.data.data import example_filepath
+    # sbml_2_neo(example_filepath)
 
     # ----------------------------------------------------
 
+    import time
+
     # parse all the models
     files = get_model_paths()
+
+    # first 50 models
+    files = files[0:50]
+
     print("Number of models:", len(files))
     for k, filepath in enumerate(files):
         print('[{}/{}] {}'.format(k+1, len(files), filepath))
+        start = time.time()
         sbml_2_neo(filepath)
+        print('Time: ', time.time()-start)
+
