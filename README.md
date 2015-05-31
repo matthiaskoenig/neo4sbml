@@ -1,11 +1,5 @@
-# neo4jpy
+# neo4sbml  
 
-## Working with Neo4j in python
+## Generation of SBML - RDF metadata graph in neo4j
 
-Py2neo is a client library and comprehensive toolkit for working with Neo4j
-from within Python applications and from the command line. The core library
-has no external dependencies and has been carefully designed to be easy and
-intuitive to use.
-http://py2neo.org/2.0/
-
-`pip install py2neo`
+Generation of RDF - SBML object graph from biomodels.org curated models.
