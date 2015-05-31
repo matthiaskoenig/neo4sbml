@@ -3,39 +3,39 @@ Read a given computational model in SBML format into the Neo4j graph model.
 
 The nodes are SBML objects from the xml graph
 
-    <bqmodel:is>
-	<rdf:Bag>
-	<rdf:li rdf:resource="http://identifiers.org/biomodels.db/MODEL6613849442"/>
-	</rdf:Bag>
-	</bqmodel:is>
-	<bqmodel:is>
-	<rdf:Bag>
-	<rdf:li rdf:resource="http://identifiers.org/biomodels.db/BIOMD0000000001"/>
-	</rdf:Bag>
-	</bqmodel:is>
-	<bqmodel:isDescribedBy>
-	<rdf:Bag>
-	<rdf:li rdf:resource="http://identifiers.org/pubmed/8983160"/>
-	</rdf:Bag>
-	</bqmodel:isDescribedBy>
-	<bqbiol:isVersionOf>
-	<rdf:Bag>
-	<rdf:li rdf:resource="http://identifiers.org/go/GO:0007274"/>
-	<rdf:li rdf:resource="http://identifiers.org/go/GO:0007166"/>
-	<rdf:li rdf:resource="http://identifiers.org/go/GO:0019226"/>
-	</rdf:Bag>
-	</bqbiol:isVersionOf>
-	<bqbiol:hasTaxon>
-	<rdf:Bag>
-	<rdf:li rdf:resource="http://identifiers.org/taxonomy/7787"/>
-	</rdf:Bag>
-	</bqbiol:hasTaxon>
-	</rdf:Description>
-	</rdf:RDF>
+Some example annotations.
+<bqmodel:is>
+<rdf:Bag>
+<rdf:li rdf:resource="http://identifiers.org/biomodels.db/MODEL6613849442"/>
+</rdf:Bag>
+</bqmodel:is>
+<bqmodel:is>
+<rdf:Bag>
+<rdf:li rdf:resource="http://identifiers.org/biomodels.db/BIOMD0000000001"/>
+</rdf:Bag>
+</bqmodel:is>
+<bqmodel:isDescribedBy>
+<rdf:Bag>
+<rdf:li rdf:resource="http://identifiers.org/pubmed/8983160"/>
+</rdf:Bag>
+</bqmodel:isDescribedBy>
+<bqbiol:isVersionOf>
+<rdf:Bag>
+<rdf:li rdf:resource="http://identifiers.org/go/GO:0007274"/>
+<rdf:li rdf:resource="http://identifiers.org/go/GO:0007166"/>
+<rdf:li rdf:resource="http://identifiers.org/go/GO:0019226"/>
+</rdf:Bag>
+</bqbiol:isVersionOf>
+<bqbiol:hasTaxon>
+<rdf:Bag>
+<rdf:li rdf:resource="http://identifiers.org/taxonomy/7787"/>
+</rdf:Bag>
+</bqbiol:hasTaxon>
+</rdf:Description>
+</rdf:RDF>
 
 """
 from __future__ import print_function
-# read the SBML example annotations
 
 import libsbml
 import py2neo as neo
@@ -112,19 +112,13 @@ def create_rdf_nodes(rdf, object_id, graph):
     for d in rdf:
         for uri in d['URIS']:
             # create rdf node
-            # neo_rdf = neo.Node("RDF", uri=uri)
             neo_rdf = graph.cypher.execute('MERGE (r:RDF {{uri: "{}" }}) RETURN r'.format(uri))
             # print('neo_rdf', neo_rdf)
-
-            # create the qualifier
-            # TODO:
-            # bqt_model = neo.Relationship(neo_rdf, d["Qualifier"], neo_node)
-            # graph.create(bqt_model)
 
             cypher_str = '''
                 MATCH (r:RDF) WHERE r.uri="{}"
                 MATCH (m) WHERE m.object_id="{}"
-                CREATE (r)-[:{}]->(m)
+                MERGE (r)-[:{}]->(m)
             '''.format(uri, object_id, d["Qualifier"])
             # print(cypher_str)
             graph.cypher.execute(cypher_str)
@@ -135,15 +129,28 @@ def split_uri(uri):
     pass
 
 
+def setup_graph():
+    graph = neo.Graph()
+    # set the indices
+
+    cypher_str = '''
+        CREATE CONSTRAINT ON (m:SBase) ASSERT m.object_id IS UNIQUE
+    '''
+    graph.cypher.execute(cypher_str)
+
+
+    return graph
+
+
 def sbml_2_neo(sbml_filepath):
     """ Creates the neo4j graph from SBML. """
-    graph = neo.Graph()
+    graph = setup_graph()
 
-    # model
+
+    #  sbml model
     doc = libsbml.readSBMLFromFile(sbml_filepath)
     model = doc.getModel()
     model_id = model.getId()
-
 
     def rdf_graph(obj, label):
         """ Creates the RDF graph for the given model object. """
@@ -153,12 +160,13 @@ def sbml_2_neo(sbml_filepath):
             MERGE (m:{} {{ object_id: "{}", id: "{}", model: "{}" }})
             RETURN m
             '''.format(label, object_id, obj.getId(), model_id)
+        # TODO: on create set .. m.id=
+
         graph.cypher.execute(cypher_str)
         # read the rdf information
         rdf = read_rdf(obj)
         # create rdf nodes and relationships
         create_rdf_nodes(rdf, object_id=object_id, graph=graph)
-
 
     def link_to_model(obj, label):
         """ Link between model objects and model."""
@@ -167,10 +175,12 @@ def sbml_2_neo(sbml_filepath):
         cypher_str = '''
                 MATCH (c:{}) WHERE c.object_id="{}"
                 MATCH (m:Model) WHERE m.object_id="{}"
-                CREATE (c)-[:{}]->(m)
+                MERGE (c)-[:{}]->(m)
         '''.format(label, object_id, "__".join([model_id, model_id]), relation_str)
+
+        # TODO: check with PROFILE
         # print(cypher_str)
-        graph.cypher.execute(cypher_str)
+        graph.cypher.execute(cypher_str, )
 
     # ----------------------------------------------------
     # model
