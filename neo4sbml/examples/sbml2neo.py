@@ -86,17 +86,26 @@ def read_rdf(sobj):
         return rdf
     
     for cv in cvterms:  
-        # print('BQT', cv.getBiologicalQualifierType())
-        # print('MQT', cv.getModelQualifierType())
+        qualifier_type = cv.getQualifierType() 
+        
         uris = []
         for k in range(cv.getNumResources()):
             # print('URI:', cv.getResourceURI(k))
             uri = cv.getResourceURI(k)
             uris.append(uri)
-        rdf.append({'BQT': cv.getBiologicalQualifierType(),
-                    'MQT': cv.getModelQualifierType(),
-                    'URIS': uris
-                   })
+        
+        # model qualifier
+        if qualifier_type == 0: 
+            rdf.append({'QualifierType': QUALIFIER[qualifier_type],
+                        'ModelQualifier': BGM[cv.getModelQualifierType()],
+                        'URIS': uris
+            })
+        # biological qualifier
+        if qualifier_type == 1: 
+            rdf.append({'QualifierType': QUALIFIER[qualifier_type],
+                        'BiologicalQualifier': BGB[cv.getModelQualifierType()],
+                        'URIS': uris
+            })
     return rdf
 
 def create_rdf_nodes(rdf, neo_node, graph):
@@ -112,6 +121,7 @@ def create_rdf_nodes(rdf, neo_node, graph):
             # create the MQT relationship
             mqt_model = neo.Relationship(neo_rdf, "MQT:{}".format(d["MQT"]), neo_node)
             graph.create(mqt_model)
+
     
 
 def split_uri(uri):
