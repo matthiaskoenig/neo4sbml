@@ -16,7 +16,7 @@ class Relationship(Enum):
     pass
 
 
-def read_rdf():
+def read_rdf(sobj):
     """
     <bqmodel:is>
 	<rdf:Bag>
@@ -48,9 +48,19 @@ def read_rdf():
 	</rdf:Description>
 	</rdf:RDF>
     """
+    
+    cvterms = sobj.getCVTerms()
+    for cv in cvterms:        
+        print('BQT', cv.getBiologicalQualifierType())
+        print('MQT', cv.getModelQualifierType())
+        resources = cv.getResources()
+        print('resources', resources)
+        for k in range(resources.getLength()):
+            res = resources.
+        # for res in resources:
+        #     print('res', res)
 
-    pass
-
+    return resources
 
 def sbml_2_neo(sbml_filepath):
     """ Creates the neo4j graph from SBML. """
@@ -62,6 +72,8 @@ def sbml_2_neo(sbml_filepath):
     model = doc.getModel()
     neo_model = neo.Node("Model", id=model.getId())
     # TODO: set additional attributes/properties
+    
+        
 
     # compartments
     for c in model.getListOfCompartments():
@@ -84,6 +96,7 @@ def sbml_2_neo(sbml_filepath):
         graph.create(r_in_model)
 
     return model
+    
 
 
 
@@ -97,5 +110,5 @@ graph.create(alice_knows_bob)
 '''
 
 if __name__ == "__main__":
-    from data.data import example_filepath
+    from neo4sbml.data.data import example_filepath
     model = sbml_2_neo(example_filepath)
