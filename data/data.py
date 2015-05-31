@@ -7,4 +7,5 @@
 import os
 data_dir = os.path.dirname(os.path.abspath(__file__))
 
-example_filepath = os.path.join(test_dir, 'models/demo', '{}.xml'.format(demo_model_id))
+# /home/mkoenig/neo4sbml/data/BioModels-r29_sbml_curated
+example_filepath = os.path.join(data_dir, 'BioModels-r29_sbml_curated', 'BIOMD0000000001.xml')
