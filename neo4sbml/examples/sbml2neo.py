@@ -48,16 +48,17 @@ class Relationship(Enum):
 
 def read_rdf(sobj):
     """ Read RDF from the given SBML object. """
-    cvterms = sobj.getCVTerms()
-    
+    cvterms = sobj.getCVTerms()    
     rdf = []    
+    if not cvterms:
+        return rdf
+    
     for cv in cvterms:  
-        print('#')
-        print('BQT', cv.getBiologicalQualifierType())
-        print('MQT', cv.getModelQualifierType())
+        # print('BQT', cv.getBiologicalQualifierType())
+        # print('MQT', cv.getModelQualifierType())
         uris = []
         for k in range(cv.getNumResources()):
-            print('URI:', cv.getResourceURI(k))
+            # print('URI:', cv.getResourceURI(k))
             uri = cv.getResourceURI(k)
             uris.append(uri)
         rdf.append({'BQT': cv.getBiologicalQualifierType(),
@@ -98,8 +99,8 @@ def sbml_2_neo(sbml_filepath):
 
     # read the rdf information    
     rdf = read_rdf(model)
-    # create the relationships
-    
+    # create rdf nodes and relationships
+    create_rdf_nodes(rdf, neo_model, graph)
 
     # compartments
     for c in model.getListOfCompartments():
@@ -107,19 +108,34 @@ def sbml_2_neo(sbml_filepath):
 
         c_in_model = neo.Relationship(neo_c, "COMPARTMENT_IN_MODEL", neo_model)
         graph.create(c_in_model)
+        
+        # read the rdf information    
+        rdf = read_rdf(c)
+        # create rdf nodes and relationships
+        create_rdf_nodes(rdf, neo_c, graph)
 
     # species
-    for c in model.getListOfSpecies():
-        neo_s = neo.Node("Species", id=c.getId())
+    for s in model.getListOfSpecies():
+        neo_s = neo.Node("Species", id=s.getId())
 
         s_in_model = neo.Relationship(neo_s, "SPECIES_IN_MODEL", neo_model)
         graph.create(s_in_model)
+        
+        # read the rdf information    
+        rdf = read_rdf(s)
+        # create rdf nodes and relationships
+        create_rdf_nodes(rdf, neo_s, graph)
 
     # reactions
-    for c in model.getListOfReactions():
-        neo_r = neo.Node("Reaction", id=c.getId())
+    for r in model.getListOfReactions():
+        neo_r = neo.Node("Reaction", id=r.getId())
         r_in_model = neo.Relationship(neo_r, "REACTION_IN_MODEL", neo_model)
         graph.create(r_in_model)
+        
+        # read the rdf information    
+        rdf = read_rdf(r)
+        # create rdf nodes and relationships
+        create_rdf_nodes(rdf, neo_r, graph)
 
     return model
     
