@@ -16,6 +16,40 @@ class Relationship(Enum):
     pass
 
 
+def read_rdf():
+    """
+    <bqmodel:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/biomodels.db/MODEL6613849442"/>
+	</rdf:Bag>
+	</bqmodel:is>
+	<bqmodel:is>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/biomodels.db/BIOMD0000000001"/>
+	</rdf:Bag>
+	</bqmodel:is>
+	<bqmodel:isDescribedBy>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/pubmed/8983160"/>
+	</rdf:Bag>
+	</bqmodel:isDescribedBy>
+	<bqbiol:isVersionOf>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/go/GO:0007274"/>
+	<rdf:li rdf:resource="http://identifiers.org/go/GO:0007166"/>
+	<rdf:li rdf:resource="http://identifiers.org/go/GO:0019226"/>
+	</rdf:Bag>
+	</bqbiol:isVersionOf>
+	<bqbiol:hasTaxon>
+	<rdf:Bag>
+	<rdf:li rdf:resource="http://identifiers.org/taxonomy/7787"/>
+	</rdf:Bag>
+	</bqbiol:hasTaxon>
+	</rdf:Description>
+	</rdf:RDF>
+    """
+
+    pass
 
 
 def sbml_2_neo(sbml_filepath):
@@ -27,24 +61,29 @@ def sbml_2_neo(sbml_filepath):
     doc = libsbml.readSBMLFromFile(sbml_filepath)
     model = doc.getModel()
     neo_model = neo.Node("Model", id=model.getId())
-
+    # TODO: set additional attributes/properties
 
     # compartments
     for c in model.getListOfCompartments():
         neo_c = neo.Node("Compartment", id=c.getId())
 
-    c_in_model = Relationship(neo_c, "COMPARTMENT_IN_MODEL", bob)
-    graph.create(alice_knows_bob)
-
-
+        c_in_model = neo.Relationship(neo_c, "COMPARTMENT_IN_MODEL", neo_model)
+        graph.create(c_in_model)
 
     # species
+    for c in model.getListOfSpecies():
+        neo_s = neo.Node("Species", id=c.getId())
 
+        s_in_model = neo.Relationship(neo_s, "SPECIES_IN_MODEL", neo_model)
+        graph.create(s_in_model)
 
     # reactions
+    for c in model.getListOfReactions():
+        neo_r = neo.Node("Reaction", id=c.getId())
+        r_in_model = neo.Relationship(neo_r, "REACTION_IN_MODEL", neo_model)
+        graph.create(r_in_model)
 
-
-
+    return model
 
 
 
@@ -59,4 +98,4 @@ graph.create(alice_knows_bob)
 
 if __name__ == "__main__":
     from data.data import example_filepath
-    sbml_2_neo(example_filepath)
+    model = sbml_2_neo(example_filepath)
