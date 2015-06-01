@@ -56,10 +56,12 @@ BQM = {
 ```
 
 ## Implementation
-The implementation is done in python using `libsbml` for parsing the SBML information and RDF annotations and `py2neo` for creating the cypher statements for creating the graph.
+The implementation is done in python using `libsbml` for parsing the SBML information and RDF annotations and `py2neo` for creating the cypher statements for creating the graph. So for creating the graph from scratch install the requirements and run the scripts in neo4sbml.
 
 [py2neo](http://py2neo.org/2.0/)
 [libsbml](http://www.sbml.org)
+
+To work with the database copy the `graph.db` folder in this git into neo4j and restart the database server.
 
 ## Results
 The resulting graph is available in the `graph.db` subfolder.
@@ -81,14 +83,18 @@ MATCH (r:RDF)-[]-> (s:SBase) RETURN r.uri, count(s.id) ORDER BY count(s.id) DESC
 
 // look at interesting ones
 // C00562 : Phosphoprotein
-MATCH ( (r:RDF) -[]-> (s:SBase)) WHERE r.uri="http://identifiers.org/kegg.compound/C00562" RETURN (r)-[]-> (s)
+MATCH ( (r:RDF) -[]-> (s:SBase))
+WHERE r.uri="http://identifiers.org/kegg.compound/C00562"
+RETURN (r)-[]-> (s)
 
-// Everybody is modeling MAP kinase pathway
-// http://identifiers.org/uniprot/Q02750
-MATCH ( (r:RDF) -[]-> (s:SBase)) WHERE r.uri="http://identifiers.org/uniprot/Q02750" RETURN (r)-[]-> (s)
+// Everybody is modeling MAP kinase pathway (http://identifiers.org/uniprot/Q02750)
+MATCH ( (r:RDF) -[]-> (s:SBase))
+WHERE r.uri="http://identifiers.org/uniprot/Q02750"
+RETURN (r)-[]-> (s)
+
 // find the corresponding models
-$MATCH ( (r:RDF) -[]-> (s:SBase) -[]-> (m:Model)) WHERE r.uri="http://identifiers.org/uniprot/Q02750" RETURN (r)-[]-> (s)-[]->(m)
+MATCH ( (r:RDF) -[]-> (s:SBase) -[]-> (m:Model))
+WHERE r.uri="http://identifiers.org/uniprot/Q02750"
+RETURN (r)-[]-> (s)-[]->(m)
 ```
 ![alt tag](./results/MAP2K1.png)
-
-
