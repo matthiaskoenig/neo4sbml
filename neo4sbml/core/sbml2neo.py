@@ -83,15 +83,16 @@ class NeoGraphFactory(object):
         Perform all the requests in a transaction
         http://py2neo.org/2.0/cypher.html#transactions
     """
-
     def __init__(self, sbml_filepath):
         self.path = sbml_filepath
         self.graph = self.__class__.setup_graph()
 
-        #  sbml model
-        doc = libsbml.readSBMLFromFile(sbml_filepath)
-        self.model = doc.getModel()
+        # hashing for unique id
         self.md5 = data.hash_for_file(sbml_filepath)
+
+        #  sbml model
+        self.doc = libsbml.readSBMLFromFile(sbml_filepath)
+        self.model = self.doc.getModel()
         self.model_id = self.model.getId()
 
     @classmethod
@@ -111,6 +112,34 @@ class NeoGraphFactory(object):
             '''.format(label)
             graph.cypher.execute(cypher_str)
         return graph
+
+    def sbml2neo(self):
+        # start transaction
+        # tx = self.graph.cypher.begin()
+
+        # model
+        self.rdf_graph(self.model, 'Model')
+
+        # compartments
+        for obj in self.model.getListOfCompartments():
+            label = 'Compartment'
+            self.rdf_graph(obj=obj, label=label)
+            self.link_to_model(obj=obj, label=label)
+
+        # species
+        for obj in self.model.getListOfSpecies():
+            label = 'Species'
+            self.rdf_graph(obj=obj, label=label)
+            self.link_to_model(obj=obj, label=label)
+
+        # reactions
+        for obj in self.model.getListOfReactions():
+            label = 'Reaction'
+            self.rdf_graph(obj=obj, label=label)
+            self.link_to_model(obj=obj, label=label)
+        # commit transaction
+        # tx.commit()
+        # ----------------------------------------------------
 
     def create_rdf_nodes(self, rdf, object_id):
         """ Creates the additional RDF nodes for the given neo_node. """
@@ -159,35 +188,6 @@ class NeoGraphFactory(object):
         # print(cypher_str)
         self.graph.cypher.execute(cypher_str)
 
-    def sbml2neo(self):
-        # start transaction
-        # tx = self.graph.cypher.begin()
-
-        # model
-        self.rdf_graph(self.model, 'Model')
-
-        # compartments
-        for obj in self.model.getListOfCompartments():
-            label = 'Compartment'
-            self.rdf_graph(obj=obj, label=label)
-            self.link_to_model(obj=obj, label=label)
-
-        # species
-        for obj in self.model.getListOfSpecies():
-            label = 'Species'
-            self.rdf_graph(obj=obj, label=label)
-            self.link_to_model(obj=obj, label=label)
-
-        # reactions
-        for obj in self.model.getListOfReactions():
-            label = 'Reaction'
-            self.rdf_graph(obj=obj, label=label)
-            self.link_to_model(obj=obj, label=label)
-
-        # commit transaction
-        # tx.commit()
-        # ----------------------------------------------------
-
     @staticmethod
     def read_rdf(sobj):
         """ Read RDF from the given SBML object. """
@@ -228,27 +228,27 @@ class NeoGraphFactory(object):
 if __name__ == "__main__":
     import time
 
-    # parse one test file
-    g_fac = NeoGraphFactory(data.example_filepath)
-    g_fac.sbml2neo()
-    exit(0)
-    # ----------------------------------------------------
+    # [A] parse one test file
+    # g_fac = NeoGraphFactory(data.example_filepath)
+    # g_fac.sbml2neo()
 
-    # parse all the models
+    # ------------------------------------------------------------------------------
+
+    # [B] parse all the models
     files = data.get_biomodel_paths()
 
-    # first 50 models
-    files = files[0:50]
+    # subset of models
+    files = files[0:10]
 
     # TODO: better transaction managment (everything in one transaction)
     # TODO: protection against cross-site scripting by providing dictionary
+    # TODO: concurrent
 
     print("Number of models:", len(files))
     for k, path in enumerate(files):
 
-        # TODO: concurrent
-        print('[{}/{}] {}'.format(k+1, len(files), filepath))
+        print('[{}/{}] {}'.format(k+1, len(files), path))
         start = time.time()
-        sbml_2_neo(filepath)
+        g_fac = NeoGraphFactory(path)
+        g_fac.sbml2neo()
         print('Time: ', time.time()-start)
-
