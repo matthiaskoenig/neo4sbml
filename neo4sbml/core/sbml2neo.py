@@ -95,6 +95,9 @@ class NeoGraphFactory(object):
         self.model = self.doc.getModel()
         self.model_id = self.model.getId()
 
+        # transaction
+        self.tx = None
+
     @classmethod
     def setup_graph(cls):
         """ Setup the neo4j graph and creates the constraints and indices."""
@@ -115,47 +118,36 @@ class NeoGraphFactory(object):
 
     def sbml2neo(self):
         # start transaction
-        # tx = self.graph.cypher.begin()
+        self.tx = self.graph.cypher.begin()
 
         # model
         self.rdf_graph(self.model, 'Model')
+        self.tx.process()
 
         # compartments
         for obj in self.model.getListOfCompartments():
             label = 'Compartment'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
+        self.tx.process()
 
         # species
         for obj in self.model.getListOfSpecies():
             label = 'Species'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
+        self.tx.process()
 
         # reactions
         for obj in self.model.getListOfReactions():
             label = 'Reaction'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
+        self.tx.process()
+
         # commit transaction
-        # tx.commit()
+        self.tx.commit()
         # ----------------------------------------------------
-
-    def create_rdf_nodes(self, rdf, object_id):
-        """ Creates the additional RDF nodes for the given neo_node. """
-        for d in rdf:
-            for uri in d['URIS']:
-                # create rdf node
-                # TODO: remove merge
-                neo_rdf = self.graph.cypher.execute('MERGE (r:RDF {{uri: "{}" }}) RETURN r'.format(uri))
-
-                cypher_str = '''
-                    MATCH (r:RDF) WHERE r.uri="{}"
-                    MATCH (m) WHERE m.object_id="{}"
-                    MERGE (r)-[:{}]->(m)
-                '''.format(uri, object_id, d["Qualifier"])
-                # print(cypher_str)
-                self.graph.cypher.execute(cypher_str)
 
     def rdf_graph(self, obj, label):
         """ Creates the RDF graph for the given model object. """
@@ -168,13 +160,32 @@ class NeoGraphFactory(object):
             ON CREATE SET m.model="{}"
             '''.format(label, object_id, obj.getId(), obj.getName(), self.model_id)
 
-        self.graph.cypher.execute(cypher_str)
-        # tx.append(cypher_str)
+        # self.graph.cypher.execute(cypher_str)
+        self.tx.append(cypher_str)
 
         # read the rdf information
         rdf = self.read_rdf(obj)
         # create rdf nodes and relationships
         self.create_rdf_nodes(rdf, object_id=object_id)
+
+    def create_rdf_nodes(self, rdf, object_id):
+        """ Creates the additional RDF nodes for the given neo_node. """
+        for d in rdf:
+            for uri in d['URIS']:
+                # create RDF node
+                cypher_str = 'MERGE (r:RDF {{uri: "{}" }})'.format(uri)
+                # self.graph.cypher.execute(cypher_str)
+                self.tx.append(cypher_str)
+
+                # create RDF relationship
+                cypher_str = '''
+                    MATCH (r:RDF) WHERE r.uri="{}"
+                    MATCH (m) WHERE m.object_id="{}"
+                    MERGE (r)-[:{}]->(m)
+                '''.format(uri, object_id, d["Qualifier"])
+
+                # self.graph.cypher.execute(cypher_str)
+                self.tx.append(cypher_str)
 
     def link_to_model(self, obj, label):
         """ Link between model objects and model."""
@@ -185,8 +196,9 @@ class NeoGraphFactory(object):
                 MATCH (m:Model) WHERE m.object_id="{}"
                 MERGE (c)-[:{}]->(m)
         '''.format(label, object_id, "__".join([self.model_id, self.md5]), relation_str)
-        # print(cypher_str)
-        self.graph.cypher.execute(cypher_str)
+
+        # self.graph.cypher.execute(cypher_str)
+        self.tx.append(cypher_str)
 
     @staticmethod
     def read_rdf(sobj):
@@ -240,7 +252,6 @@ if __name__ == "__main__":
     # subset of models
     files = files[0:10]
 
-    # TODO: better transaction managment (everything in one transaction)
     # TODO: protection against cross-site scripting by providing dictionary
     # TODO: concurrent
 
