@@ -39,7 +39,7 @@ from __future__ import print_function
 
 import libsbml
 import py2neo as neo
-from enum import Enum
+from neo4sbml.data import data
 
 # ------------------------------------------------------------------
 # RDF relationships
@@ -75,199 +75,176 @@ BQM = {
     4: 'BQM_HAS_INSTANCE',
     5: 'BQM_UNKNOWN'
 }
+# ------------------------------------------------------------------
 
-
-def read_rdf(sobj):
-    """ Read RDF from the given SBML object. """
-    cvterms = sobj.getCVTerms()    
-    rdf = []    
-    if not cvterms:
-        return rdf
-    
-    for cv in cvterms:  
-        qualifier_type = cv.getQualifierType() 
-        
-        uris = []
-        for k in range(cv.getNumResources()):
-            # print('URI:', cv.getResourceURI(k))
-            uri = cv.getResourceURI(k)
-            uris.append(uri)
-        
-        # model qualifier
-        if qualifier_type == 0: 
-            rdf.append({'QualifierType': QUALIFIER[qualifier_type],
-                        'Qualifier': BQM[cv.getModelQualifierType()],
-                        'URIS': uris
-            })
-        # biological qualifier
-        if qualifier_type == 1: 
-            rdf.append({'QualifierType': QUALIFIER[qualifier_type],
-                        'Qualifier': BQB[cv.getModelQualifierType()],
-                        'URIS': uris
-            })
-    return rdf
-
-def create_rdf_nodes(rdf, object_id, graph):
-    """ Creates the additional RDF nodes for the given neo_node. """
-    for d in rdf:
-        for uri in d['URIS']:
-            # create rdf node
-            neo_rdf = graph.cypher.execute('MERGE (r:RDF {{uri: "{}" }}) RETURN r'.format(uri))
-            # print('neo_rdf', neo_rdf)
-
-            cypher_str = '''
-                MATCH (r:RDF) WHERE r.uri="{}"
-                MATCH (m) WHERE m.object_id="{}"
-                MERGE (r)-[:{}]->(m)
-            '''.format(uri, object_id, d["Qualifier"])
-            # print(cypher_str)
-            graph.cypher.execute(cypher_str)
-
-
-def split_uri(uri):
-    # TODO: get the splitted information
-    pass
-
-
-def setup_graph():
-    graph = neo.Graph()
-    # set the indices
-    cypher_str = '''
-        CREATE CONSTRAINT ON (r:RDF) ASSERT r.uri IS UNIQUE
-    '''
-    graph.cypher.execute(cypher_str)
-
-    labels = ['Model', 'Compartment', 'Reaction', 'Species']
-    for label in labels:
-        cypher_str = '''
-            CREATE CONSTRAINT ON (m:{}) ASSERT m.object_id IS UNIQUE
-        '''.format(label)
-        graph.cypher.execute(cypher_str)
-
-    return graph
-
-
-def sbml_2_neo(sbml_filepath):
+class NeoGraphFactory(object):
     """ Creates the neo4j graph from SBML.
 
         Perform all the requests in a transaction
         http://py2neo.org/2.0/cypher.html#transactions
     """
-    graph = setup_graph()
 
-    #  sbml model
-    doc = libsbml.readSBMLFromFile(sbml_filepath)
-    model = doc.getModel()
+    def __init__(self, sbml_filepath):
+        self.path = sbml_filepath
+        self.graph = self.__class__.setup_graph()
 
-    md5 = hash_for_file(sbml_filepath)
-    model_id = model.getId()
+        #  sbml model
+        doc = libsbml.readSBMLFromFile(sbml_filepath)
+        self.model = doc.getModel()
+        self.md5 = data.hash_for_file(sbml_filepath)
+        self.model_id = self.model.getId()
 
-    def rdf_graph(obj, label):
+    @classmethod
+    def setup_graph(cls):
+        """ Setup the neo4j graph and creates the constraints and indices."""
+        graph = neo.Graph()
+        # set the indices
+        cypher_str = '''
+            CREATE CONSTRAINT ON (r:RDF) ASSERT r.uri IS UNIQUE
+        '''
+        graph.cypher.execute(cypher_str)
+
+        labels = ['Model', 'Compartment', 'Reaction', 'Species']
+        for label in labels:
+            cypher_str = '''
+                CREATE CONSTRAINT ON (m:{}) ASSERT m.object_id IS UNIQUE
+            '''.format(label)
+            graph.cypher.execute(cypher_str)
+        return graph
+
+    def create_rdf_nodes(self, rdf, object_id):
+        """ Creates the additional RDF nodes for the given neo_node. """
+        for d in rdf:
+            for uri in d['URIS']:
+                # create rdf node
+                # TODO: remove merge
+                neo_rdf = self.graph.cypher.execute('MERGE (r:RDF {{uri: "{}" }}) RETURN r'.format(uri))
+
+                cypher_str = '''
+                    MATCH (r:RDF) WHERE r.uri="{}"
+                    MATCH (m) WHERE m.object_id="{}"
+                    MERGE (r)-[:{}]->(m)
+                '''.format(uri, object_id, d["Qualifier"])
+                # print(cypher_str)
+                self.graph.cypher.execute(cypher_str)
+
+    def rdf_graph(self, obj, label):
         """ Creates the RDF graph for the given model object. """
-        object_id = '__'.join([obj.getId(), md5])
+        object_id = '__'.join([obj.getId(), self.md5])
         # Create the object node
         cypher_str = '''
             MERGE (m:SBase:{} {{ object_id: "{}" }})
             ON CREATE SET m.id="{}"
             ON CREATE SET m.name="{}"
             ON CREATE SET m.model="{}"
-            '''.format(label, object_id, obj.getId(), obj.getName(), model_id)
+            '''.format(label, object_id, obj.getId(), obj.getName(), self.model_id)
 
-        graph.cypher.execute(cypher_str)
+        self.graph.cypher.execute(cypher_str)
+        # tx.append(cypher_str)
+
         # read the rdf information
-        rdf = read_rdf(obj)
+        rdf = self.read_rdf(obj)
         # create rdf nodes and relationships
-        create_rdf_nodes(rdf, object_id=object_id, graph=graph)
+        self.create_rdf_nodes(rdf, object_id=object_id)
 
-    def link_to_model(obj, label):
+    def link_to_model(self, obj, label):
         """ Link between model objects and model."""
         relation_str = "_".join([label.upper(), 'IN', 'MODEL'])
-        object_id = '__'.join([obj.getId(), md5])
+        object_id = '__'.join([obj.getId(), self.md5])
         cypher_str = '''
                 MATCH (c:{}) WHERE c.object_id="{}"
                 MATCH (m:Model) WHERE m.object_id="{}"
                 MERGE (c)-[:{}]->(m)
-        '''.format(label, object_id, "__".join([model_id, md5]), relation_str)
+        '''.format(label, object_id, "__".join([self.model_id, self.md5]), relation_str)
         # print(cypher_str)
-        graph.cypher.execute(cypher_str, )
+        self.graph.cypher.execute(cypher_str)
 
-    # ----------------------------------------------------
-    # model
-    rdf_graph(model, 'Model')
+    def sbml2neo(self):
+        # start transaction
+        # tx = self.graph.cypher.begin()
 
-    # compartments
-    for obj in model.getListOfCompartments():
-        label = 'Compartment'
-        rdf_graph(obj=obj, label=label)
-        link_to_model(obj=obj, label=label)
+        # model
+        self.rdf_graph(self.model, 'Model')
 
-    # species
-    for obj in model.getListOfSpecies():
-        label = 'Species'
-        rdf_graph(obj=obj, label=label)
-        link_to_model(obj=obj, label=label)
+        # compartments
+        for obj in self.model.getListOfCompartments():
+            label = 'Compartment'
+            self.rdf_graph(obj=obj, label=label)
+            self.link_to_model(obj=obj, label=label)
 
-    # reactions
-    for obj in model.getListOfReactions():
-        label = 'Reaction'
-        rdf_graph(obj=obj, label=label)
-        link_to_model(obj=obj, label=label)
-    # ----------------------------------------------------
+        # species
+        for obj in self.model.getListOfSpecies():
+            label = 'Species'
+            self.rdf_graph(obj=obj, label=label)
+            self.link_to_model(obj=obj, label=label)
 
-def get_model_paths():
-    from neo4sbml.data.data import data_dir
-    import os
-    dir = os.path.join(data_dir, 'BioModels-r29_sbml_curated')
+        # reactions
+        for obj in self.model.getListOfReactions():
+            label = 'Reaction'
+            self.rdf_graph(obj=obj, label=label)
+            self.link_to_model(obj=obj, label=label)
 
-    # get all SBML files in folder
-    files = [os.path.join(dir, f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f))]
-    return sorted(files)
+        # commit transaction
+        # tx.commit()
+        # ----------------------------------------------------
 
+    @staticmethod
+    def read_rdf(sobj):
+        """ Read RDF from the given SBML object. """
+        cvterms = sobj.getCVTerms()
+        rdf = []
+        if not cvterms:
+            return rdf
 
-def hash_for_file(filepath, hash_type='MD5', blocksize=65536):
-    """ Calculate the md5_hash for a file.
+        for cv in cvterms:
+            qualifier_type = cv.getQualifierType()
 
-        Calculating a hash for a file is always useful when you need to check if two files
-        are identical, or to make sure that the contents of a file were not changed, and to
-        check the integrity of a file when it is transmitted over a network.
-        he most used algorithms to hash a file are MD5 and SHA-1. They are used because they
-        are fast and they provide a good way to identify different files.
-        [http://www.pythoncentral.io/hashing-files-with-python/]
-    """
-    import hashlib
+            uris = []
+            for k in range(cv.getNumResources()):
+                # print('URI:', cv.getResourceURI(k))
+                uri = cv.getResourceURI(k)
+                uris.append(uri)
 
-    hasher = None
-    if hash_type == 'MD5':
-        hasher = hashlib.md5()
-    elif hash_type == 'SHA1':
-        hasher == hashlib.sha1()
-    with open(filepath, 'rb') as f:
-        buf = f.read(blocksize)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = f.read(blocksize)
-    return hasher.hexdigest()
+            # model qualifier
+            if qualifier_type == 0:
+                rdf.append({'QualifierType': QUALIFIER[qualifier_type],
+                            'Qualifier': BQM[cv.getModelQualifierType()],
+                            'URIS': uris
+                })
+            # biological qualifier
+            if qualifier_type == 1:
+                rdf.append({'QualifierType': QUALIFIER[qualifier_type],
+                            'Qualifier': BQB[cv.getModelQualifierType()],
+                            'URIS': uris
+                })
+        return rdf
+
+    @staticmethod
+    def split_uri(uri):
+        # TODO: get the splitted information and create nodes from them
+        raise NotImplemented
 
 
 if __name__ == "__main__":
+    import time
 
     # parse one test file
-    # from neo4sbml.data.data import example_filepath
-    # sbml_2_neo(example_filepath)
-
+    g_fac = NeoGraphFactory(data.example_filepath)
+    g_fac.sbml2neo()
+    exit(0)
     # ----------------------------------------------------
 
-    import time
     # parse all the models
-    files = get_model_paths()
+    files = data.get_biomodel_paths()
 
     # first 50 models
     files = files[0:50]
 
     # TODO: better transaction managment (everything in one transaction)
+    # TODO: protection against cross-site scripting by providing dictionary
 
     print("Number of models:", len(files))
-    for k, filepath in enumerate(files):
+    for k, path in enumerate(files):
 
         # TODO: concurrent
         print('[{}/{}] {}'.format(k+1, len(files), filepath))
