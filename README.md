@@ -55,7 +55,7 @@ BQM = {
 ## Implementation
 The implementation is done in python using `libsbml` for parsing the SBML information and RDF annotations and `py2neo` for creating the cypher statements for creating the graph.
 
-[py2neo](http://py2neo.org/2.0/)  
+[py2neo](http://py2neo.org/2.0/)
 [libsbml](http://www.sbml.org)
 
 ## Results
