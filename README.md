@@ -73,7 +73,22 @@ The graph database generating script can be found in `core.sbml2neo.py` using th
 // find the model annotations
 MATCH (r:RDF)-[]-> (m:Model) RETURN m.id, r.uri
 
+// which models have the most annotations
+MATCH (r:RDF)-[]-> (m:Model) RETURN m.id, count(m.id) ORDER BY count(m.id) DESC
 
+// which annotations are used most often
+MATCH (r:RDF)-[]-> (s:SBase) RETURN r.uri, count(s.id) ORDER BY count(s.id) DESC
+
+// look at interesting ones
+// C00562 : Phosphoprotein
+MATCH ( (r:RDF) -[]-> (s:SBase)) WHERE r.uri="http://identifiers.org/kegg.compound/C00562" RETURN (r)-[]-> (s)
+
+// Everybody is modeling MAP kinase pathway
+// http://identifiers.org/uniprot/Q02750
+MATCH ( (r:RDF) -[]-> (s:SBase)) WHERE r.uri="http://identifiers.org/uniprot/Q02750" RETURN (r)-[]-> (s)
+// find the corresponding models
+$MATCH ( (r:RDF) -[]-> (s:SBase) -[]-> (m:Model)) WHERE r.uri="http://identifiers.org/uniprot/Q02750" RETURN (r)-[]-> (s)-[]->(m)
 ```
+![alt tag](./results/MAP2K1.png)
 
 

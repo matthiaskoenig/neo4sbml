@@ -128,25 +128,25 @@ class NeoGraphFactory(object):
             label = 'Compartment'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
-        self.tx.process()
-        # self.tx.commit()
+        # self.tx.process()
+        self.tx.commit()
 
         # species
-        # self.tx = self.graph.cypher.begin()
+        self.tx = self.graph.cypher.begin()
         for obj in self.model.getListOfSpecies():
             label = 'Species'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
-        self.tx.process()
-        # self.tx.commit()
+        # self.tx.process()
+        self.tx.commit()
 
         # reactions
-        # self.tx = self.graph.cypher.begin()
+        self.tx = self.graph.cypher.begin()
         for obj in self.model.getListOfReactions():
             label = 'Reaction'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
-        self.tx.process()
+        # self.tx.process()
 
         # commit transaction
         self.tx.commit()
@@ -190,6 +190,7 @@ class NeoGraphFactory(object):
 
                 # self.graph.cypher.execute(cypher_str)
                 self.tx.append(cypher_str)
+        self.tx.process()
 
     def link_to_model(self, obj, label):
         """ Link between model objects and model."""
@@ -265,6 +266,8 @@ if __name__ == "__main__":
     # [B] parse all the models (~600s = 10min)
     files = data.get_biomodel_paths()
     print("Number of models:", len(files))
+
+    files = files[469:]
 
     def process_file(graph, path, k):
         print('[{}/{}] {}'.format(k+1, len(files), path))
