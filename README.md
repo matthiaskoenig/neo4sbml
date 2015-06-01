@@ -62,5 +62,5 @@ The implementation is done in python using `libsbml` for parsing the SBML inform
 The resulting graph is available in the `graph.db` subfolder.
 The graph database generating script can be found in `core.sbml2neo.py` using the information from the 575 SBML models in the data directory.
 
-
+![alt tag](./results/screenshot.png)
 
