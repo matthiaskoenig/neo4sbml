@@ -2,20 +2,25 @@
 
 ## Introduction
 Standard formats for the description of computational models in biology are important in the context of reproducible research, the communication of model content and intention and the documentation of models. Annotations play an important role in this documentation, providing the information what the individual model components are. The de facto standard for describing computational models is the Systems Biology Markup Language (SBML) with its annotations meta information encoded in RDF.
-The questions we wanted to answer were:
+
+Questions we wanted to answer were:
 * How well are the currently available computational models annotated?
 i.e. which parts of the model are annotated and with which information?
 * Which annotations occur in many models and is shared between models?
 i.e. either which information is annotated very often or which elements occur in many models?
 
-We analysed these questions by the means of a graph database representing the available relationships between model components [C] and their annotations [A], i.e. the graph [C] <-[:ANNOTATED]- [A].
+We analysed these questions by the means of a graph database representing the available relationships between model components (C) and their annotations (A), i.e. the graph
+`(C) <-[:ANNOTATED]- (A)`.
+
 This project was realized within the Berlin [neo4j-hackathon](https://gist.github.com/jexp/6ca5c8b528b8080fa63f) mentored by Michael Hunger.
 
 ## Description
-The main project focus was the generation of the [A]<--[C] graph database for available models in SBML format. We used the curated computational models in Systems Biology Markup Language (SBML) and their available annotation information in RDF consisting of 575 models in the 29th BioModels release available for download from (http://www.ebi.ac.uk/biomodels-main/).
-(neo4j)[http://neo4j.com/]
+The main project focus was the generation of the `(C) <-[:ANNOTATED]- (A)` graph database for available models in SBML format. We used the curated computational models in Systems Biology Markup Language (SBML) and their available annotation information in RDF consisting of 575 models in the 29th BioModels release available for download from http://www.ebi.ac.uk/biomodels-main/.
 
-The graph consists of two main components: First the SBML model structure graph which represents the `Model`, the `Compartment`, the `Species` and the `Reaction` nodes of the individual models, with model components connected to their respective `Model` via the following relationships
+[neo4j](http://neo4j.com/)
+
+The graph consists of two main components:
+First the SBML model structure graph which represents the `Model`, the `Compartment`, the `Species` and the `Reaction` nodes of the individual models, with model components connected to their respective `Model` via the following relationships
 * `COMPARTMENT_IN_MODEL`
 * `SPECIES_IN_MODEL` 
 * `REACTION_IN_MODEL`
@@ -55,7 +60,7 @@ BQM = {
 ## Implementation
 The implementation is done in python using `libsbml` for parsing the SBML information and RDF annotations and `py2neo` for creating the cypher statements for creating the graph.
 
-[py2neo](http://py2neo.org/2.0/)
+[py2neo](http://py2neo.org/2.0/)  
 [libsbml](http://www.sbml.org)
 
 ## Results
