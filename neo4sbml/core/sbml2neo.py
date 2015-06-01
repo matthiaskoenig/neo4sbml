@@ -260,14 +260,11 @@ if __name__ == "__main__":
     g_fac.sbml2neo()
     '''
 
-
     # ------------------------------------------------------------------------------
     # TODO: protection against cross-site scripting by providing dictionary
     # [B] parse all the models (~600s = 10min)
     files = data.get_biomodel_paths()
     print("Number of models:", len(files))
-
-    files = files[469:]
 
     def process_file(graph, path, k):
         print('[{}/{}] {}'.format(k+1, len(files), path))

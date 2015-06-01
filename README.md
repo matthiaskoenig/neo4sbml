@@ -72,6 +72,9 @@ The graph database generating script can be found in `core.sbml2neo.py` using th
 ### Example queries
 
 ```
+// In total 575 curated models should be in the database
+MATCH (n:Model) RETURN COUNT(n)
+
 // find the model annotations
 MATCH (r:RDF)-[]-> (m:Model) RETURN m.id, r.uri
 
