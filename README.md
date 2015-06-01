@@ -12,12 +12,10 @@ i.e. either which information is annotated very often or which elements occur in
 We analysed these questions by the means of a graph database representing the available relationships between model components (C) and their annotations (A), i.e. the graph
 `(C) <-[:ANNOTATED]- (A)`.
 
-This project was realized within the Berlin [neo4j-hackathon](https://gist.github.com/jexp/6ca5c8b528b8080fa63f) mentored by Michael Hunger.
+This project was realized within the Berlin [neo4j-hackathon](https://gist.github.com/jexp/6ca5c8b528b8080fa63f) mentored by Michael Hunger with [neo4j](http://neo4j.com/).
 
 ## Description
 The main project focus was the generation of the `(C) <-[:ANNOTATED]- (A)` graph database for available models in SBML format. We used the curated computational models in Systems Biology Markup Language (SBML) and their available annotation information in RDF consisting of 575 models in the 29th BioModels release available for download from http://www.ebi.ac.uk/biomodels-main/.
-
-[neo4j](http://neo4j.com/)
 
 The graph consists of two main components:
 First the SBML model structure graph which represents the `Model`, the `Compartment`, the `Species` and the `Reaction` nodes of the individual models, with model components connected to their respective `Model` via the following relationships
@@ -60,7 +58,7 @@ BQM = {
 ## Implementation
 The implementation is done in python using `libsbml` for parsing the SBML information and RDF annotations and `py2neo` for creating the cypher statements for creating the graph.
 
-[py2neo](http://py2neo.org/2.0/)  
+[py2neo](http://py2neo.org/2.0/)
 [libsbml](http://www.sbml.org)
 
 ## Results
@@ -68,4 +66,14 @@ The resulting graph is available in the `graph.db` subfolder.
 The graph database generating script can be found in `core.sbml2neo.py` using the information from the 575 SBML models in the data directory.
 
 ![alt tag](./results/screenshot.png)
+
+### Example queries
+
+```
+// find the model annotations
+MATCH (r:RDF)-[]-> (m:Model) RETURN m.id, r.uri
+
+
+```
+
 

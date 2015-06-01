@@ -83,9 +83,9 @@ class NeoGraphFactory(object):
         Perform all the requests in a transaction
         http://py2neo.org/2.0/cypher.html#transactions
     """
-    def __init__(self, sbml_filepath):
+    def __init__(self, graph, sbml_filepath):
         self.path = sbml_filepath
-        self.graph = self.__class__.setup_graph()
+        self.graph = graph
 
         # hashing for unique id
         self.md5 = data.hash_for_file(sbml_filepath)
@@ -246,36 +246,42 @@ if __name__ == "__main__":
     import time
 
     # [A] parse one test file
-    # g_fac = NeoGraphFactory(data.example_filepath)
-    # g_fac.sbml2neo()
+    '''
+    graph = NeoGraphFactory.setup_graph()
+    path = data.example_filepath
+    print(path)
+    g_fac = NeoGraphFactory(graph, sbml_filepath=path)
+    g_fac.sbml2neo()
+
+    path = data.get_filepath(469)
+    print(path)
+    g_fac = NeoGraphFactory(graph, sbml_filepath=path)
+    g_fac.sbml2neo()
+    '''
+
 
     # ------------------------------------------------------------------------------
-
+    # TODO: protection against cross-site scripting by providing dictionary
     # [B] parse all the models (~600s = 10min)
     files = data.get_biomodel_paths()
-
-    # subset for testing
-    # files = files[0:10]
-
-    # TODO: protection against cross-site scripting by providing dictionary
-
     print("Number of models:", len(files))
 
-    def process_file(path, k):
+    def process_file(graph, path, k):
         print('[{}/{}] {}'.format(k+1, len(files), path))
         # start = time.time()
-        graph_fac = NeoGraphFactory(sbml_filepath=path)
+        graph_fac = NeoGraphFactory(graph=graph, sbml_filepath=path)
         graph_fac.sbml2neo()
         # print('Time:', time.time()-start)
 
     # serial solution
-    """
+
+    graph = NeoGraphFactory.setup_graph()
     start = time.time()
     for k, path in enumerate(files):
-        process_file(path=path, k=k)
+        process_file(graph=graph, path=path, k=k)
     print('Serial:', time.time()-start)
-    """
 
+    '''
     # parallel solution
     # not really faster (?), probably due to the full transaction per file (->smaller transactions)
     import multiprocessing as mp
@@ -284,3 +290,4 @@ if __name__ == "__main__":
     start = time.time()
     results = [pool.apply(process_file, args=(path, k)) for (k, path) in enumerate(files)]
     print('Parallel:', time.time()-start)
+    '''

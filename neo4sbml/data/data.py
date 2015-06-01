@@ -5,8 +5,12 @@ Helper functions to access the data.
 import os
 data_dir = os.path.dirname(os.path.abspath(__file__))
 
-# /home/mkoenig/neo4sbml/data/BioModels-r29_sbml_curated
-example_filepath = os.path.join(data_dir, 'BioModels-r29_sbml_curated', 'BIOMD0000000001.xml')
+def get_filepath(k):
+    return os.path.join(data_dir, 'BioModels-r29_sbml_curated', 'BIOMD000000{0:04d}.xml'.format(k))
+
+# os.path.join(data_dir, 'BioModels-r29_sbml_curated', 'BIOMD0000000001.xml')
+
+example_filepath = get_filepath(1)
 
 
 def get_biomodel_paths():
