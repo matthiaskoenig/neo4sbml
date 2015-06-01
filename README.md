@@ -1,15 +1,15 @@
 # neo4sbml - RDF metadata graph for SBML
 
 ## Introduction
-Standardized formats for the description of computational models are important prerequisites for reproducible research and the communication of model content and intention. An important part for the model description are annotations, additional information which describes what exactly the model components are. Annotations provide additional meta information for models and model components.
-Our main questions were:
+Standard formats for the description of computational models in biology are important in the context of reproducible research, the communication of model content and intention and the documentation of models. Annotations play an important role in this documentation, providing the information what the individual model components are. The de facto standard for describing computational models is the Systems Biology Markup Language (SBML) with its annotations meta information encoded in RDF.
+The questions we wanted to answer were:
 * How well are the currently available computational models annotated?
 i.e. which parts of the model are annotated and with which information?
-* Which annotations occur in many models?
+* Which annotations occur in many models and is shared between models?
 i.e. either which information is annotated very often or which elements occur in many models?
 
-We analysed these questions by the means of a graph database representing the available relationships between model components [C] and model annotations [A], i.e. the graph [C] <-[:ANNOTATED]- [A].
-This project was realized within the Berlin (neo4j-hackathon)[https://gist.github.com/jexp/6ca5c8b528b8080fa63f] mentored by Michael Hunger.
+We analysed these questions by the means of a graph database representing the available relationships between model components [C] and their annotations [A], i.e. the graph [C] <-[:ANNOTATED]- [A].
+This project was realized within the Berlin [neo4j-hackathon](https://gist.github.com/jexp/6ca5c8b528b8080fa63f) mentored by Michael Hunger.
 
 ## Description
 The main project focus was the generation of the [A]<--[C] graph database for available models in SBML format. We used the curated computational models in Systems Biology Markup Language (SBML) and their available annotation information in RDF consisting of 575 models in the 29th BioModels release available for download from (http://www.ebi.ac.uk/biomodels-main/).
