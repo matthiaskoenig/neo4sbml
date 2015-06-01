@@ -1,12 +1,22 @@
-# neo4sbml - SBML - RDF metadata graph in neo4j
+# neo4sbml - RDF metadata graph for SBML
+
+## Introduction
+Standard formats of compuational biology are important for reproducible research and the communication of model content and intention. An important part for the model description are annotations, additional information which describes what exactly the model components are. Annotations provide additional meta information for models and model components.  
+Our main questions were:
+* How well are the currently availabel compuational models annotated? I.e. which parts of the model are annotated and with which information?
+* Which annotations occur in many models? I.e. either which information is annotated very often or which elements occur in many models?  
+
+We analysed these questions by the means of a graph database representing the available relationships between model components [C] and model annotations [A], i.e. the graph [C] <-[:ANNOTATED]- [A]. This project was realized within the Berlin [https://gist.github.com/jexp/6ca5c8b528b8080fa63f](neo4j-hackathon) mentored by Michael Hunger.
 
 ## Description
-The main project focus was the generation of a graph database for curated computational models in Systems Biology Markup Language (SBML) and their available annotation information in RDF. The curated models are the 575 models from the 29th BioModels release available for downlowd from [biomodels.org](http://www.ebi.ac.uk/biomodels-main/).
+The main project focus was the generation of the [A]<--[C] graph database for available models in SBML format. We used the curated computational models in Systems Biology Markup Language (SBML) and their available annotation information in RDF consisting of 575 models in the 29th BioModels release available for downloawd from [biomodels.org](http://www.ebi.ac.uk/biomodels-main/).  
+[http://neo4j.com/](neo4j)
 
 The graph consists of two main components: First the SBML model structure graph which represents the `Model`, the `Compartment`, the `Species` and the `Reaction` nodes of the individual models, with model components connected to their respective `Model` via the following relationships
 * `COMPARTMENT_IN_MODEL`
 * `SPECIES_IN_MODEL` 
 * `REACTION_IN_MODEL`
+
 All model components have the additional label `SBase`.
 The additional availabel relationships between model components can be added in a future version.
 
