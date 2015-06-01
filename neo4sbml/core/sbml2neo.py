@@ -122,7 +122,6 @@ class NeoGraphFactory(object):
 
         # model
         self.rdf_graph(self.model, 'Model')
-        self.tx.process()
 
         # compartments
         for obj in self.model.getListOfCompartments():
@@ -130,15 +129,19 @@ class NeoGraphFactory(object):
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
         self.tx.process()
+        # self.tx.commit()
 
         # species
+        # self.tx = self.graph.cypher.begin()
         for obj in self.model.getListOfSpecies():
             label = 'Species'
             self.rdf_graph(obj=obj, label=label)
             self.link_to_model(obj=obj, label=label)
         self.tx.process()
+        # self.tx.commit()
 
         # reactions
+        # self.tx = self.graph.cypher.begin()
         for obj in self.model.getListOfReactions():
             label = 'Reaction'
             self.rdf_graph(obj=obj, label=label)
@@ -178,6 +181,7 @@ class NeoGraphFactory(object):
                 self.tx.append(cypher_str)
 
                 # create RDF relationship
+                # TODO: set RDF:d["QualifierType"] label on relationship
                 cypher_str = '''
                     MATCH (r:RDF) WHERE r.uri="{}"
                     MATCH (m) WHERE m.object_id="{}"
@@ -191,6 +195,7 @@ class NeoGraphFactory(object):
         """ Link between model objects and model."""
         relation_str = "_".join([label.upper(), 'IN', 'MODEL'])
         object_id = '__'.join([obj.getId(), self.md5])
+        # TODO: set IN_MODEL label on relationship
         cypher_str = '''
                 MATCH (c:{}) WHERE c.object_id="{}"
                 MATCH (m:Model) WHERE m.object_id="{}"
@@ -246,20 +251,36 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------
 
-    # [B] parse all the models
+    # [B] parse all the models (~600s = 10min)
     files = data.get_biomodel_paths()
 
-    # subset of models
-    files = files[0:10]
+    # subset for testing
+    # files = files[0:10]
 
     # TODO: protection against cross-site scripting by providing dictionary
-    # TODO: concurrent
 
     print("Number of models:", len(files))
-    for k, path in enumerate(files):
 
+    def process_file(path, k):
         print('[{}/{}] {}'.format(k+1, len(files), path))
-        start = time.time()
-        g_fac = NeoGraphFactory(path)
-        g_fac.sbml2neo()
-        print('Time: ', time.time()-start)
+        # start = time.time()
+        graph_fac = NeoGraphFactory(sbml_filepath=path)
+        graph_fac.sbml2neo()
+        # print('Time:', time.time()-start)
+
+    # serial solution
+    """
+    start = time.time()
+    for k, path in enumerate(files):
+        process_file(path=path, k=k)
+    print('Serial:', time.time()-start)
+    """
+
+    # parallel solution
+    # not really faster (?), probably due to the full transaction per file (->smaller transactions)
+    import multiprocessing as mp
+    Ncores = 4
+    pool = mp.Pool(processes=Ncores)
+    start = time.time()
+    results = [pool.apply(process_file, args=(path, k)) for (k, path) in enumerate(files)]
+    print('Parallel:', time.time()-start)
