@@ -1,12 +1,9 @@
-"""
-py2neo
+"""Example testing py2neo.
+
 Py2neo is a client library and comprehensive toolkit for working with 
 Neo4j from within Python applications and from the command line. 
 The core library has no external dependencies and has been carefully 
 designed to be easy and intuitive to use.
-
-@author: mkoenig
-@date: 2015-??-?? 
 """
 from __future__ import print_function
 import py2neo
@@ -86,3 +83,4 @@ statement = "MATCH (a {name:{A}}), (b {name:{B}}) CREATE (a)-[:KNOWS]->(b)"
 for person_a, person_b in [("Alice", "Bob"), ("Bob", "Dave"), ("Alice", "Carol")]:
     tx.append(statement, {"A": person_a, "B": person_b})
 tx.commit()
+

@@ -1,2 +1,2 @@
-py2neo
-libsbml
+py2neo>=2021.2.3
+python-libsbml>=5.20.1

@@ -63,6 +63,29 @@ The implementation is done in python using `libsbml` for parsing the SBML inform
 
 To work with the database copy the `graph.db` folder in this git into neo4j and restart the database server.
 
+### Installation
+#### Setup neo4j
+For instance on ubuntu use:
+```
+curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key |sudo gpg --dearmor -o /usr/share/keyrings/neo4j.gpg
+echo "deb [signed-by=/usr/share/keyrings/neo4j.gpg] https://debian.neo4j.com stable 4.1" | sudo tee -a /etc/apt/sources.list.d/neo4j.list
+sudo apt update
+sudo apt-get install -y neo4j
+
+docker run \
+    --publish=7474:7474 --publish=7687:7687 \
+    --volume=$HOME/neo4j/data:/data \
+    --env=NEO4J_AUTH=none \
+    neo4j
+
+```
+
+#### Create
+```
+pip install -r requirements.txt --upgrade
+```
+
+
 ## Results
 The resulting graph is available in the `graph.db` subfolder.
 The graph database generating script can be found in `core.sbml2neo.py` using the information from the 575 SBML models in the data directory.
@@ -101,3 +124,4 @@ WHERE r.uri="http://identifiers.org/uniprot/Q02750"
 RETURN (r)-[]-> (s)-[]->(m)
 ```
 ![alt tag](./results/MAP2K1.png)
+
